@@ -176,6 +176,13 @@ def render_chat_list():
 def render_chat_interface():
     st.title("Travel Planner Chat")
 
+    if st.session_state.messages:
+        for msg in sorted(st.session_state.messages, key=lambda x: x["timestamp"]):
+            with st.container():
+                st.text(f"You: {msg['user_input']}")
+                st.text(f"Assistant: {msg['bot_response']}")
+                st.divider()
+
     with st.form(key="chat_form"):
         user_input = st.text_area("Your message:")
         if st.form_submit_button("Send"):
@@ -259,12 +266,6 @@ def render_chat_interface():
                         st.rerun()
                 except Exception as e:
                     st.error(f"Error sending message: {e}")
-    if st.session_state.messages:
-        for msg in sorted(st.session_state.messages, key=lambda x: x["timestamp"]):
-            with st.container():
-                st.text(f"You: {msg['user_input']}")
-                st.text(f"Assistant: {msg['bot_response']}")
-                st.divider()
 
 
 def render_auth():
@@ -279,16 +280,32 @@ def render_auth():
 
     with tab2:
         st.subheader("Register")
-        username = st.text_input("Username", key="register_username")
-        password = st.text_input("Password", type="password", key="register_password")
+        reg_username = st.text_input("Username", key="register_username")
+        reg_password = st.text_input(
+            "Password", type="password", key="register_password"
+        )
+
         if st.button("Register"):
-            response = requests.post(
-                f"{API_URL}/register", json={"username": username, "password": password}
-            )
-            if response.status_code == 200:
-                st.success("Registration successful! Please login.")
-            else:
-                st.error("Registration failed. Username might be taken.")
+            if not reg_username or not reg_password:
+                st.error("Please enter both username and password")
+                return
+
+            try:
+                response = requests.post(
+                    f"{API_URL}/register",
+                    json={"username": reg_username, "password": reg_password},
+                )
+
+                if response.status_code == 200:
+                    st.success("Registration successful! Please login.")
+                    time.sleep(1)
+                    st.rerun()
+                elif response.status_code == 400:
+                    st.error("Username already exists. Please choose another.")
+                else:
+                    st.error("Registration failed. Please try again.")
+            except Exception as e:
+                st.error(f"Registration error: {str(e)}")
 
 
 def main():

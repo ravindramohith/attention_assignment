@@ -38,6 +38,19 @@ def startup_event():
 
 @app.post("/register")
 def register(credentials: UserCredentials):
+    if not credentials.username or not credentials.password:
+        raise HTTPException(status_code=400, detail="Username and password required")
+
+    if len(credentials.username) < 3:
+        raise HTTPException(
+            status_code=400, detail="Username must be at least 3 characters"
+        )
+
+    if len(credentials.password) < 4:
+        raise HTTPException(
+            status_code=400, detail="Password must be at least 4 characters"
+        )
+
     if register_user(credentials.username, credentials.password):
         return {"message": "Registration successful"}
     raise HTTPException(status_code=400, detail="Username already exists")
