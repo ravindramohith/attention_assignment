@@ -1,6 +1,8 @@
 # Travel Planner Assistant
 An AI-powered travel planning assistant that helps users create personalized travel itineraries through conversation.
 
+* Note: Due to my endsemester exams, I am able to just meet basic requirements of the project. I will be updating the project with more features and improvements in the future.
+
 ## Requirements
 - Python 3.9+
 - SQLite3
@@ -104,6 +106,13 @@ streamlit run frontend/app.py
 - Interest-based recommendations
 - Dynamic prompt generation
 
+## Future Work
+The project can be extended in the following ways:
+- Implement more advanced AI models
+- Add support for multiple languages
+- Integrate with external APIs for real-time data
+- Map-based itinerary visualization with Map APIs
+- Admin panel for user management
 
 ## DataBase Schema
 ```sql
