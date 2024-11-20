@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .auth import create_token, verify_token
 from pydantic import BaseModel
-from typing import Optional
+from typing import Dict, List, Optional
 import json
 from .chatbot import generate_response
 from .database import (
@@ -24,11 +24,13 @@ class UserCredentials(BaseModel):
     password: str
 
 
+# backend/main.py - update ChatMessage model
 class ChatMessage(BaseModel):
     username: str
     chat_id: Optional[int]
     message: str
     title: Optional[str]
+    messages: Optional[List[Dict[str, str]]] = []  # Add this field
 
 
 @app.on_event("startup")
@@ -68,13 +70,16 @@ async def chat(message: ChatMessage, current_user: str = Depends(get_current_use
     if message.username != current_user:
         raise HTTPException(status_code=403)
 
-    response = generate_response(message.username, message.message)
+    # Pass full message history to generate_response
+    response = generate_response(
+        session_id=message.username,
+        user_input=message.message,
+        message_history=message.messages,
+    )
 
     if message.chat_id:
-        # Append to existing chat
         add_message_to_chat(message.chat_id, message.message, response)
     else:
-        # Create new chat
         title = message.title or message.message[:30] + "..."
         message.chat_id = save_chat(message.username, title, message.message, response)
 

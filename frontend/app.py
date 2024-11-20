@@ -132,7 +132,6 @@ def render_chat_list():
             st.rerun()
 
 
-# frontend/app.py
 def render_chat_interface():
     st.title("Travel Planner Chat")
 
@@ -141,58 +140,66 @@ def render_chat_interface():
         if st.form_submit_button("Send"):
             if user_input:
                 try:
-                    # Get current chat ID
                     current_chat_id = (
                         st.session_state.current_chat.get("id")
                         if st.session_state.current_chat
                         else None
                     )
 
+                    # Include current message history in the request
+                    all_messages = []
+                    if st.session_state.messages:
+                        # Add existing messages from the chat
+                        for msg in st.session_state.messages:
+                            all_messages.append(
+                                {"role": "user", "content": msg["user_input"]}
+                            )
+                            all_messages.append(
+                                {"role": "assistant", "content": msg["bot_response"]}
+                            )
+
+                    # Add the new message
+                    all_messages.append({"role": "user", "content": user_input})
+
                     response = requests.post(
                         f"{API_URL}/chat",
                         json={
                             "username": st.session_state.username,
-                            "chat_id": current_chat_id,  # Pass existing chat_id if available
+                            "chat_id": current_chat_id,
                             "message": user_input,
                             "title": (
                                 user_input[:30] + "..." if not current_chat_id else None
                             ),
+                            "messages": all_messages,  # Send full message history
                         },
                         headers={"Authorization": f"Bearer {st.session_state.token}"},
                     )
 
+                    # Rest of the existing code remains same
                     if response.status_code == 200:
                         data = response.json()
-                        bot_response = data["response"]
-                        chat_id = data["chat_id"]
-
                         new_message = {
                             "user_input": user_input,
-                            "bot_response": bot_response,
+                            "bot_response": data["response"],
                             "timestamp": datetime.now().isoformat(),
                         }
 
-                        # Update session state
                         if not st.session_state.messages:
                             st.session_state.messages = []
                         st.session_state.messages.append(new_message)
 
-                        # Update current chat if new
                         if not current_chat_id:
                             st.session_state.current_chat = {
-                                "id": chat_id,
+                                "id": data["chat_id"],
                                 "title": user_input[:30] + "...",
-                                "messages": json.dumps([new_message]),
+                                "messages": st.session_state.messages,
                             }
 
-                        # Reload chats to sync
                         load_chats()
-                        time.sleep(0.5)  # Give time for success message
+                        time.sleep(0.5)
                         st.rerun()
                 except Exception as e:
-                    st.error(f"Error: {str(e)}")
-
-    # Display messages
+                    st.error(f"Error sending message: {e}")
     if st.session_state.messages:
         for msg in st.session_state.messages:
             with st.container():

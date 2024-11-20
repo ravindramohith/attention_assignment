@@ -18,6 +18,9 @@ class TravelContext:
     def get_missing_info(self) -> List[str]:
         return [k for k, v in self.info.items() if v is None]
 
+    def clear_messages(self):
+        self.messages = []
+
 
 def create_travel_prompt(context: TravelContext) -> str:
     missing = context.get_missing_info()
@@ -37,21 +40,32 @@ Include specific places, times, and costs."""
 session_contexts: Dict[str, TravelContext] = {}
 
 
-def generate_response(session_id: str, user_input: str) -> str:
+def generate_response(
+    session_id: str, user_input: str, message_history: List[Dict[str, str]] = None
+) -> str:
     try:
         if session_id not in session_contexts:
             session_contexts[session_id] = TravelContext()
 
         context = session_contexts[session_id]
+        context.clear_messages()  # Clear previous messages
+
+        # Add full conversation history
+        if message_history:
+            for msg in message_history:
+                context.add_message(msg["role"], msg["content"])
+
+        # Add current message
         context.add_message("user", user_input)
 
         prompt = create_travel_prompt(context)
 
+        # Send full conversation to LLM
         response = ollama.chat(
             model="llama2",
             messages=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": user_input},
+                *context.messages,  # Include full conversation history
             ],
             stream=False,
         )
