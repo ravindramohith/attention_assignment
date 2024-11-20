@@ -1,8 +1,8 @@
-# frontend/app.py
 import streamlit as st
 import extra_streamlit_components as stx
 import requests
 import json
+import time
 from datetime import datetime, timedelta
 
 API_URL = "http://127.0.0.1:8000"
@@ -12,7 +12,6 @@ cookie_manager = stx.CookieManager()
 
 
 def init_session_state():
-    """Initialize session state"""
     defaults = {
         "authenticated": False,
         "username": "",
@@ -22,24 +21,26 @@ def init_session_state():
         "messages": [],
     }
 
+    # Initialize defaults if not present
     for key, default_value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = default_value
 
-    # Check token
+    # Check for existing token in cookies
     token = cookie_manager.get("auth_token")
-    if token:
+    if token and not st.session_state.authenticated:
         try:
             response = requests.post(
                 f"{API_URL}/verify", headers={"Authorization": f"Bearer {token}"}
             )
             if response.status_code == 200:
+                auth_data = response.json()
                 st.session_state.token = token
                 st.session_state.authenticated = True
-                st.session_state.username = response.json()["username"]
+                st.session_state.username = auth_data["username"]
                 load_chats()
-        except:
-            pass
+        except Exception as e:
+            cookie_manager.delete("auth_token")
 
 
 def handle_login(username: str, password: str):
@@ -51,7 +52,7 @@ def handle_login(username: str, password: str):
             auth_data = response.json()
             token = auth_data["access_token"]
 
-            # Store in cookie
+            # Set cookie with secure flags
             cookie_manager.set(
                 "auth_token", token, expires_at=datetime.now() + timedelta(days=7)
             )
@@ -63,6 +64,7 @@ def handle_login(username: str, password: str):
 
             st.success("Login successful!")
             load_chats()
+            time.sleep(1)  # Give time for success message
             st.rerun()
         else:
             st.error("Invalid credentials")
@@ -121,7 +123,11 @@ def render_chat_list():
     for chat in st.session_state.chats:
         if st.sidebar.button(f"💬 {chat['title']}", key=f"chat_{chat['id']}"):
             st.session_state.current_chat = chat
-            messages = json.loads(chat["messages"]) if isinstance(chat["messages"], str) else chat["messages"]
+            messages = (
+                json.loads(chat["messages"])
+                if isinstance(chat["messages"], str)
+                else chat["messages"]
+            )
             st.session_state.messages = messages
             st.rerun()
 
@@ -181,6 +187,7 @@ def render_chat_interface():
 
                         # Reload chats to sync
                         load_chats()
+                        time.sleep(0.5)  # Give time for success message
                         st.rerun()
                 except Exception as e:
                     st.error(f"Error: {str(e)}")

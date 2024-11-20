@@ -16,7 +16,6 @@ from .database import (
 )
 
 app = FastAPI()
-
 security = HTTPBearer()
 
 
@@ -64,53 +63,22 @@ def verify(username: str = Depends(get_current_user)):
     return {"username": username}
 
 
-# backend/main.py
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from .auth import create_token, verify_token
-from pydantic import BaseModel
-from typing import Optional
-import json
-from .chatbot import generate_response
-from .database import (
-    init_db,
-    register_user,
-    authenticate_user,
-    save_chat,
-    add_message_to_chat,
-    get_user_chats,
-)
-
-app = FastAPI()
-security = HTTPBearer()
-
-
-class UserCredentials(BaseModel):
-    username: str
-    password: str
-
-
-class ChatMessage(BaseModel):
-    username: str
-    chat_id: Optional[int]
-    message: str
-    title: Optional[str]
-
-
 @app.post("/chat")
-async def chat(message: ChatMessage):
-    response = generate_response(message.username, message.message)
-    chat_id = message.chat_id
+async def chat(message: ChatMessage, current_user: str = Depends(get_current_user)):
+    if message.username != current_user:
+        raise HTTPException(status_code=403)
 
-    if chat_id:
+    response = generate_response(message.username, message.message)
+
+    if message.chat_id:
         # Append to existing chat
-        add_message_to_chat(chat_id, message.message, response)
-        return {"response": response, "chat_id": chat_id}
+        add_message_to_chat(message.chat_id, message.message, response)
     else:
         # Create new chat
         title = message.title or message.message[:30] + "..."
-        new_chat_id = save_chat(message.username, title, message.message, response)
-        return {"response": response, "chat_id": new_chat_id}
+        message.chat_id = save_chat(message.username, title, message.message, response)
+
+    return {"response": response, "chat_id": message.chat_id}
 
 
 @app.get("/chats/{username}")
