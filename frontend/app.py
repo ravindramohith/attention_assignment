@@ -140,15 +140,52 @@ def load_chats():
 
 
 def render_chat_list():
+    st.markdown(
+        """
+        <style>
+            .stButton > button {
+                width: 100%;
+                margin-bottom: 5px;
+                padding: 10px;
+                border-radius: 5px;
+            }
+            section[data-testid="stSidebar"] .block-container {
+                padding-bottom: 40px;
+            }
+            .new-chat-btn {
+                background-color: #4CAF50 !important;
+                color: white !important;
+            }
+            .chat-btn {
+                text-align: left !important;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .logout-btn {
+                position: fixed;
+                bottom: 20px;
+                width: calc(100% - 40px) !important;
+                background-color: #ff4b4b !important;
+                color: white !important;
+            }
+        </style>
+    """,
+        unsafe_allow_html=True,
+    )
+
     st.sidebar.title("Your Chats")
 
-    if st.sidebar.button("🆕 New Chat"):
+    if st.sidebar.button("⨁ New Chat", key="new_chat", use_container_width=True):
         st.session_state.current_chat = None
         st.session_state.messages = []
         st.rerun()
 
     for chat in st.session_state.chats:
-        if st.sidebar.button(f"💬 {chat['title']}", key=f"chat_{chat['id']}"):
+        title = chat["title"][:30] + "..." if len(chat["title"]) > 30 else chat["title"]
+        if st.sidebar.button(
+            f"💬 {title}", key=f"chat_{chat['id']}", use_container_width=True
+        ):
             st.session_state.current_chat = chat
             messages = (
                 json.loads(chat["messages"])
@@ -157,6 +194,7 @@ def render_chat_list():
             )
             st.session_state.messages = messages
             st.rerun()
+
     st.sidebar.markdown(
         '<div style="position: fixed; bottom: 20px; width: 100%;">',
         unsafe_allow_html=True,
