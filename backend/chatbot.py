@@ -1,4 +1,3 @@
-# backend/chatbot.py
 import ollama
 from typing import Dict, List
 from datetime import datetime
@@ -47,32 +46,39 @@ def generate_response(
         if session_id not in session_contexts:
             session_contexts[session_id] = TravelContext()
 
+        print("MESSAGE HS, \n", message_history)
         context = session_contexts[session_id]
-        context.clear_messages()  # Clear previous messages
+        context.clear_messages()
 
-        # Add full conversation history
+        # Use sorted message history
         if message_history:
-            for msg in message_history:
+            # Sort messages by timestamp if present
+            sorted_history = (
+                sorted(message_history, key=lambda x: x.get("timestamp", ""))
+                if all("timestamp" in msg for msg in message_history)
+                else message_history
+            )
+
+            for msg in sorted_history:
                 context.add_message(msg["role"], msg["content"])
 
-        # Add current message
         context.add_message("user", user_input)
-
         prompt = create_travel_prompt(context)
 
-        # Send full conversation to LLM
         response = ollama.chat(
             model="llama2",
             messages=[
                 {"role": "system", "content": prompt},
-                *context.messages,  # Include full conversation history
+                *[
+                    {"role": m["role"], "content": m["content"]}
+                    for m in context.messages
+                ],
             ],
             stream=False,
         )
 
         assistant_response = response["message"]["content"].strip()
         context.add_message("assistant", assistant_response)
-
         return assistant_response
 
     except Exception as e:

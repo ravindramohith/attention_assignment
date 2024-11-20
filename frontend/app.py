@@ -39,6 +39,8 @@ def init_session_state():
                 st.session_state.authenticated = True
                 st.session_state.username = auth_data["username"]
                 load_chats()
+            else:
+                handle_logout()
         except Exception as e:
             cookie_manager.delete("auth_token")
 
@@ -73,12 +75,37 @@ def handle_login(username: str, password: str):
 
 
 def handle_logout():
-    cookie_manager.delete("auth_token")
-    st.session_state.authenticated = False
-    st.session_state.username = ""
-    st.session_state.current_chat = None
-    st.session_state.chats = []
-    st.experimental_rerun()
+    for key in [
+        "authenticated",
+        "username",
+        "token",
+        "current_chat",
+        "chats",
+        "messages",
+    ]:
+        st.session_state[key] = (
+            None
+            if key == "token"
+            else (
+                []
+                if key in ["chats", "messages"]
+                else False if key == "authenticated" else ""
+            )
+        )
+
+    # Clear cookie after state
+    if cookie_manager.get("auth_token"):
+        cookie_manager.delete("auth_token")
+
+    # Force reload without cache
+    st.markdown(
+        """
+        <script>
+            window.parent.location.reload();
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def load_chats():
@@ -130,6 +157,20 @@ def render_chat_list():
             )
             st.session_state.messages = messages
             st.rerun()
+    st.sidebar.markdown(
+        '<div style="position: fixed; bottom: 20px; width: 100%;">',
+        unsafe_allow_html=True,
+    )
+    if st.sidebar.button(
+        "Logout",
+        type="primary",
+        key="logout_btn",
+        help="Click to logout",
+        use_container_width=True,
+        on_click=handle_logout,
+    ):
+        pass
+    st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_chat_interface():
@@ -146,20 +187,40 @@ def render_chat_interface():
                         else None
                     )
 
-                    # Include current message history in the request
+                    # Build and sort message history by timestamp
                     all_messages = []
                     if st.session_state.messages:
-                        # Add existing messages from the chat
-                        for msg in st.session_state.messages:
+                        # Sort existing messages by timestamp
+                        sorted_messages = sorted(
+                            st.session_state.messages,
+                            key=lambda x: datetime.fromisoformat(x["timestamp"]),
+                        )
+                        # Add sorted messages to history
+                        for msg in sorted_messages:
                             all_messages.append(
-                                {"role": "user", "content": msg["user_input"]}
+                                {
+                                    "role": "user",
+                                    "content": msg["user_input"],
+                                    "timestamp": msg["timestamp"],
+                                }
                             )
                             all_messages.append(
-                                {"role": "assistant", "content": msg["bot_response"]}
+                                {
+                                    "role": "assistant",
+                                    "content": msg["bot_response"],
+                                    "timestamp": msg["timestamp"],
+                                }
                             )
 
-                    # Add the new message
-                    all_messages.append({"role": "user", "content": user_input})
+                    # Add current message
+                    current_timestamp = datetime.now().isoformat()
+                    all_messages.append(
+                        {
+                            "role": "user",
+                            "content": user_input,
+                            "timestamp": current_timestamp,
+                        }
+                    )
 
                     response = requests.post(
                         f"{API_URL}/chat",
@@ -170,12 +231,10 @@ def render_chat_interface():
                             "title": (
                                 user_input[:30] + "..." if not current_chat_id else None
                             ),
-                            "messages": all_messages,  # Send full message history
+                            "messages": all_messages,
                         },
                         headers={"Authorization": f"Bearer {st.session_state.token}"},
                     )
-
-                    # Rest of the existing code remains same
                     if response.status_code == 200:
                         data = response.json()
                         new_message = {
@@ -201,7 +260,7 @@ def render_chat_interface():
                 except Exception as e:
                     st.error(f"Error sending message: {e}")
     if st.session_state.messages:
-        for msg in st.session_state.messages:
+        for msg in sorted(st.session_state.messages, key=lambda x: x["timestamp"]):
             with st.container():
                 st.text(f"You: {msg['user_input']}")
                 st.text(f"Assistant: {msg['bot_response']}")
@@ -233,18 +292,12 @@ def render_auth():
 
 
 def main():
-    # st.set_page_config(page_title="Travel Planner", layout="wide")
-
     init_session_state()
 
     if st.session_state.authenticated:
-        col1, col2 = st.columns([1, 3])
-
+        col1, col2 = st.columns([0.1, 0.9])
         with col1:
             render_chat_list()
-            if st.button("Logout"):
-                handle_logout()
-
         with col2:
             render_chat_interface()
     else:

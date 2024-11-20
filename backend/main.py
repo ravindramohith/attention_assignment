@@ -4,7 +4,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .auth import create_token, verify_token
 from pydantic import BaseModel
 from typing import Dict, List, Optional
-import json
 from .chatbot import generate_response
 from .database import (
     init_db,
@@ -24,7 +23,6 @@ class UserCredentials(BaseModel):
     password: str
 
 
-# backend/main.py - update ChatMessage model
 class ChatMessage(BaseModel):
     username: str
     chat_id: Optional[int]

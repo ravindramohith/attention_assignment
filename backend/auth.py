@@ -2,7 +2,7 @@ import jwt
 from datetime import datetime, timedelta
 from typing import Optional
 
-SECRET_KEY = "your-secure-secret-key"  # In production use env var
+SECRET_KEY = "JWT_SECRET"
 ALGORITHM = "HS256"
 
 
