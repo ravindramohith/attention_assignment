@@ -1,6 +1,8 @@
 # Travel Planner Assistant
 An AI-powered travel planning assistant that helps users create personalized travel itineraries through conversation.
 
+# Click here to see [demo](https://drive.google.com/file/d/1BHmZUJFx8jterQw4YHACxxMovGVaLbAy/view?usp=sharing)
+
 * Note: Due to my endsemester exams, I am able to just meet basic requirements of the project. I will be updating the project with more features and improvements in the future.
 
 ## Requirements
