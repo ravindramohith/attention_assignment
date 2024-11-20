@@ -1,6 +1,5 @@
 fastapi
 ollama
-sqlite3
 streamlit
 streamlit-cookies-manager
 extra-streamlit-components
